@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "spline"
+name = "spline_filter"
 version = "0.1.0"
 description = ""
 authors = ["Landon Work <landon.r.work@gmail.com>"]

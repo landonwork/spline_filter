@@ -80,23 +80,11 @@ class SplineDeriv:
         self.n_curves = spline.n_curves
         self.x_bounds = [spline.points[i, 0] for i in range(0, spline.n_curves * 2 + 1, 2)]
         self.points = spline.points
-        self.curves = []
         self.M = np.array([
             [1, -2,  1],
             [0,  2, -2],
             [0,  0,  1]
         ])
-
-        for i in range(spline.n_curves):
-            ind = i * 2
-            X = spline.points[ind:ind+3, 0].reshape(-1)
-            Y = spline.points[ind:ind+3, 1].reshape(-1)
-
-            def closure(u):
-                dU = np.array([0, 1, 2*u, 3*u*u]).reshape((-1, 1))
-                return np.matmul(np.matmul(Y, self.M), dU) / np.matmul(np.matmul(X, self.M), dU)
-
-            self.curves.append(closure)
 
     def deriv_at_x(self, x):
         index = ((np.array(self.x_bounds) <= x).sum() - 1) * 2
@@ -125,7 +113,7 @@ class SplineDeriv:
 
         return dy_dx
 
-    def interpolate(self, step = 1e-1):
+    def interpolate(self, step = 1e-3):
         x = np.arange(self.x_bounds[0], self.x_bounds[-1], step)
         interp = []
         for val in x:

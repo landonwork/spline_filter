@@ -1,6 +1,6 @@
 '''Copyright © 2023 Landon Work. All rights reserved.'''
 
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,14 +21,11 @@ def cubic_bezier_curve(p1, p2, p3, p4, u = None):
     return lerp(bezier_curve(p1, p2, p3, u), bezier_curve(p2, p3, p4, u), u)
 
 def quadratic_equation_pos(a, b, c):
-    # print('a, b, c:', a, b, c)
-    # print('Discriminant:', b * b - 4 * a * c)
-    return (-b + np.sqrt(b * b - 4 * a * c)) / (2 * a)
+    return (-b + np.sqrt(np.square(b) - 4 * a * c)) / (a + a)
 
 class Spline:
-    '''Thin wrapper around an output tensor that provides convenient
-    methods for inspecting, visualizing, etc. a spline filter'''
-    def __init__(self, control_points: tf.Tensor):
+    '''Class for visualizing splines'''
+    def __init__(self, control_points: ArrayLike):
         '''An array-like object containing the control points
 
         Parameters:
@@ -39,18 +36,25 @@ class Spline:
         self.control_points = control_points
         self.n_curves = (control_points.shape[0] - 1) // 2
 
-    def plot(self, step: float = 1e-2):
-        # Interpolation
+    def plot(self, step: float = 1e-3, control_points: bool = False, ax: Optional[plt.Axes] = None):
         interp = self.interpolate(step)
-        plt.plot(interp[:, 0], interp[:, 1])
-        # Control points
-        plt.plot(
-            self.control_points[:, 0],
-            self.control_points[:, 1],
-            linestyle='dashed',
-            marker='s',
-            alpha=0.8
-        )
+        ax = ax if ax is not None else plt
+
+        # Curve
+        curve = ax.plot(interp[:, 0], interp[:, 1])
+
+        # Control Points
+        if control_points:
+            points = ax.plot(
+                self.control_points[:, 0],
+                self.control_points[:, 1],
+                linestyle='dashed',
+                marker='s',
+            )
+            return curve, points
+
+        return curve
+
 
     def point_at_u(self, u: float):
         '''get (x, y) for value `u`
@@ -64,13 +68,13 @@ class Spline:
         if u == self.n_curves:
             return self.control_points[-1,:]
         elif u > self.n_curves:
-            raise ValueError('u: {u}')
+            raise ValueError(f'u: {u}')
         else:
             index = int(u) * 2
             val = float(u) % 1.
             return bezier_curve(*[self.control_points[ind, :] for ind in range(index, index+3)], val)
 
-    def interpolate(self, step = 1e-2):
+    def interpolate(self, step = 1e-3):
         '''Get an array of points drawn all along the spline from u = 0 to 
         u = 1
 
@@ -90,7 +94,7 @@ class Spline:
         self.point_at_u(u)
 
     @classmethod
-    def from_vectors(cls, velocities):
+    def from_velocities(cls, velocities, start=None, end=None):
         '''Alternate constructor that takes velocities instead of control points
         and creates a C1 spline. The resulting spline filter starts at
         x = 0, y = 0, u = 0 and ends at x = 1, y = 1, u = 1. It is useful for
@@ -100,7 +104,13 @@ class Spline:
         ===========
         :param velocities: a 2-D array or tensor with 2 columns and any number of rows
         '''
-        points = [np.zeros(2)]
+        if start is None:
+            start = np.array([0.0, 0.0])
+        if end is None:
+            end = np.array([1.0, 1.0])
+
+        displacement = end - start
+        points = [[0.0, 0.0]]
 
         for i in range(velocities.shape[0] - 1):
             v0 = velocities[i, :]
@@ -110,22 +120,111 @@ class Spline:
             points.append(points[-1] + v1)
         
         points = np.array(points)
-        points = points / points[-1, :]
+        points = (points / points[-1, :]) * displacement + start
 
         return cls(points)
 
+class OneToOneSpline(Spline):
+    '''The proper class for visualizing a spline filter
+    
+    Represents a spline that has a one-to-one mapping between x and y
+    '''
+    def __init__(self, control_points: ArrayLike):
+        super().__init__(control_points)
+        self.x_bounds = control_points[0::2, 0]
+        self.M = np.array([
+            [1, -2,  1],
+            [0,  2, -2],
+            [0,  0,  1]
+        ])
+    
+    @classmethod
+    def from_spline(cls, spline: Spline):
+        return cls(spline.control_points)
+    
+    @classmethod
+    def from_velocities(cls, velocities, start=None, end=None):
+        return cls.from_spline(super().from_velocities(velocities, start, end))
+    
+    def u_at_x(self, x):
+        'Map x to u'
+        index = int((np.array(self.x_bounds) <= x).sum() - 1) * 2
+        if index >= self.control_points.shape[0]:
+            raise ValueError(f"x: {x}")
+
+        p1 = self.control_points[index, :]
+        p2 = self.control_points[index+1, :]
+        p3 = self.control_points[index+2, :]
+
+        # Set up quadratic equation: x = a * u^2 + b * u + c and solve for u
+        a =      p1[0] - 2 * p2[0] + p3[0]
+        b = -2 * p1[0] + 2 * p2[0]
+        c =      p1[0] - x
+        u = quadratic_equation_pos(a, b, c)
+
+        return u
+
+    def y_at_x(self, x):
+        'Map x to y'
+        return self(self.u_at_x(x))[1]
+    
+    def deriv_at_u(self, u):
+        'Get the derivative dy/dx at u'
+        if u == self.n_curves:
+            index = int(u - 1) * 2
+            val = 1.0
+        elif u > self.n_curves:
+            raise ValueError(f'u: {u}')
+        else:
+            index = int(u) * 2
+            val = float(u) % 1.
+
+        points = self.control_points[index:index+3, :]
+        X = points[:, 0].reshape((1, 3))
+        Y = points[:, 1].reshape((1, 3))
+        dU = np.array([0, 1, 2 * val]).reshape((3, 1))
+        dy_dx = np.matmul(np.matmul(Y, self.M), dU) / np.matmul(np.matmul(X, self.M), dU)
+
+        return dy_dx
+
+    def deriv_at_x(self, x):
+        'Get the derivative dy/df at x'
+        return self.deriv_at_u(self.u_at_x(x))
+
+    def interpolate_deriv(self, step: float = 1e-3):
+        'Interpolate the derivative of the entire spline'
+        x = np.arange(self.x_bounds[0], self.x_bounds[-1], step)
+        interp = [self.deriv_at_x(val) for val in x]
+
+        return np.hstack([
+            x.reshape((-1, 1)),
+            np.array(interp).reshape((-1, 1))
+        ])
+    
+    def plot_deriv(self, step: float = 1e-3, ax = None):
+        'Plot the derivative of the entire spline'
+        ax = ax if ax is not None else plt
+        interp = self.interpolate_deriv(step)
+        line = ax.plot(interp[:, 0], interp[:, 1])
+        return line
+
 class SplineFilter(keras.layers.Layer):
     '''Keras-compatible layer that transforms inputs into a spline filter.
-    Output from the previous layer must be and 1-D tensor positive and non-zero
-    and have an even number of elements that is greater or equal to 4. In
-    specific, inputs are treated as velocities that are used to construct the
-    control points for a bezier spline that represents a continuous CDF.
-    '''
+    Input must be 1-D, positive, and have an even number of elements that is greater
+    or equal to 4. In specific, inputs are treated as velocities that are used to
+    construct the control points for a bezier spline that represents a continuous,
+    bounded CDF.'''
     def __init__(self, min: float = 0, max: float = 1, **kwargs):
+        '''
+        Parameters:
+        ===========
+        :param min: the minimum value of the output range
+        :param max: the maximum value of the output range
+        '''
         kwargs['trainable'] = False
         super().__init__(**kwargs)
         self.M = None
-        # Used to scale X outputs correctly
+        # Used to scale outputs correctly
         self.x_range = max - min
         self.x_min = min
 
@@ -168,7 +267,7 @@ class SplineFilter(keras.layers.Layer):
         self.min_tensor = tf.convert_to_tensor(np.vstack(
             [np.full(output_shape[-1], self.x_min, np.float32), np.zeros(output_shape[-1], np.float32)]
         ).reshape((2, 1, -1)))
-    
+
     def call(self, inputs):
         two_rows = tf.reshape(inputs, [-1, 2, 1, inputs.shape[1] // 2])
         points = tf.matmul(two_rows, self.M)
@@ -223,7 +322,6 @@ def get_curve(args):
     bools = x_bounds <= x
     index = tf.maximum((tf.reduce_sum(tf.cast(bools, tf.int32)) - 1) * 2, 0)
 
-    # return (x, tf.gather(spline, [index, index+1, index+2], axis=2))
     return (x, spline[:, :, index:index+3])
 
 @tf.function
