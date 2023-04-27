@@ -148,6 +148,8 @@ class OneToOneSpline(Spline):
     
     def u_at_x(self, x):
         'Map x to u'
+        if x == self.x_bounds[-1]:
+            return self.n_curves
         index = int((np.array(self.x_bounds) <= x).sum() - 1) * 2
         if index >= self.control_points.shape[0]:
             raise ValueError(f"x: {x}")
