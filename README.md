@@ -36,7 +36,7 @@ The spline filter was inspired by a combination of factors.
 1. The beautiful explanation of splines found [here](https://www.youtube.com/watch?v=jvPPXbo87ds&t=382s&pp=ygUVY29udGludWl0eSBvZiBzcGxpbmVz).
 2. The frustrating problem of predicting bids for internet ad space using information available to the seller.
 3. The curious lack of understandable conditional density estimators in the field. Either current models
-   are trained once and then sampled without being given any inputs other than hypothetical variables
+   are trained once and then sampled without being given any inputs other than hypothetical values
    for the stochastic/predicted variables, or I have grossly misunderstood the literature.
 4. I needed a final project for [my professor's](https://github.com/sharadkj) machine learning class,
    and I wanted to use a conditional density estimator.
