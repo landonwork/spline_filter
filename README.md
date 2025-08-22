@@ -15,7 +15,7 @@ feedback from an open-source community can only improve upon what has been put f
 
 The spline density estimator was inspired by a combination of factors.
 
-1. The beautiful explanation of splines found [here](https://www.youtube.com/watch?v=jvPPXbo87ds&t=382s&pp=ygUVY29udGludWl0eSBvZiBzcGxpbmVz).
+1. The beautiful explanation of bezier splines found [here](https://www.youtube.com/watch?v=jvPPXbo87ds&t=382s&pp=ygUVY29udGludWl0eSBvZiBzcGxpbmVz).
 2. The frustrating problem of predicting bids for internet ad space using information available to the seller.
 3. The curious lack of understandable conditional density estimators in the field. Either current models
    are trained once and then sampled without being given any inputs other than hypothetical values
@@ -33,6 +33,15 @@ With regards to the license, all rights are reserved by the creator until more r
 ## Starting Out
 
 Take a look through the `dev.ipynb` notebook to see how this is used.
+
+## TODO
+
+- [ ] Move CDF spline specifics into distribution.py
+- [ ] Enable custom knot placements for SimpleDensityEstimator
+- [ ] Explore relationship between irregular knot placements and area and then normalize density curves by area
+- [ ] Print and return mean loss instead of summed loss to visualize loss per observation (normalize by batch size)
+- [ ] Move bezier splines onto v2 branch?
+- [ ] Merge v2 branch with main branch
 
 ## License
 
