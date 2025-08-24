@@ -36,11 +36,15 @@ Take a look through the `dev.ipynb` notebook to see how this is used.
 
 ## TODO
 
-- [ ] Move CDF spline specifics into distribution.py
+- [x] Separate CDF spline and sampling specifics from BSpline1D class
 - [ ] Enable custom knot placements for SimpleDensityEstimator
-- [ ] Explore relationship between irregular knot placements and area and then normalize density curves by area
+- [ ] Explore relationship between irregular knot placements and area
+    - [ ]  Normalize density curves by area in training loop if needed
+    - [ ]  The FlexibleDensityEstimator definitely needs this
 - [ ] Print and return mean loss instead of summed loss to visualize loss per observation (normalize by batch size)
+- [ ] Design a better experiment for the SimpleDensityEstimator where there are no high densities at the extremes
 - [ ] Move bezier splines onto v2 branch?
+- [ ] Update README with some of the cool stuff the package can do!
 - [ ] Merge v2 branch with main branch
 
 ## License

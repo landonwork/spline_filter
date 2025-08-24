@@ -2,7 +2,8 @@ import numpy as np
 import tensorflow as tf
 from tqdm import tqdm, trange
 
-from spline_distribution.spline import BSpline1D
+from spline_filter.spline import BSpline1D
+from spline_filter.cdf import BSplineCDF
 
 
 def tf_basis_batched(knots, degree, t, dtype=tf.float64):
@@ -101,8 +102,7 @@ class SimpleDensityEstimator:
         return loss
 
     def train(self, t_true, n_epochs=10, batch_size=128, verbose=True):
-        iterator = range(n_epochs) if verbose else trange(n_epochs)
-        for epoch in iterator:
+        for epoch in range(n_epochs):
             if verbose:
                 print(f'Epoch {epoch+1}/{n_epochs}', end=' ')
             epoch_loss = 0.0
@@ -120,8 +120,7 @@ class SimpleDensityEstimator:
                 print(epoch_loss)
 
     def train_cdf(self, t_pred, over_pred_vec, n_epochs=10, batch_size=128, verbose=True):
-        iterator = range(n_epochs) if verbose else trange(n_epochs)
-        for epoch in iterator:
+        for epoch in range(n_epochs):
             if verbose:
                 print(f'Epoch {epoch+1}/{n_epochs}', end=' ')
             epoch_loss = 0.0
@@ -208,7 +207,7 @@ class SimpleDensityEstimator:
         return BSpline1D.clamped(self.get_pdf_points(), self.interior_knots.numpy(), 2)
 
     def get_cdf_spline(self):
-        return BSpline1D.clamped(self.get_cdf_points(), self.interior_knots.numpy(), 3)
+        return BSplineCDF.clamped(self.get_cdf_points(), self.interior_knots.numpy(), 3)
 
 
 class FlexibleDensityEstimator:
@@ -296,9 +295,10 @@ class FlexibleDensityEstimator:
         loss = -tf.math.log(tf.where(over_pred_vec > 0.5, cdf, 1 - cdf))
         return loss
 
-    def train(self, t_true, n_epochs=10, batch_size=1024):
+    def train(self, t_true, n_epochs=10, batch_size=1024, verbose=True):
         for epoch in range(n_epochs):
-            print(f'Epoch {epoch+1}/{n_epochs}', end=' ')
+            if verbose:
+                print(f'Epoch {epoch+1}/{n_epochs}', end=' ')
             epoch_loss = 0
             for i in range(t_true.shape[0] // batch_size):
                 with tf.GradientTape() as tape:
@@ -309,11 +309,11 @@ class FlexibleDensityEstimator:
                 epoch_loss += loss.numpy().mean()
                 grads = tape.gradient(loss, [self.point_logits, self.knot_logits])
                 self.optimizer.apply_gradients(zip(grads, [self.point_logits, self.knot_logits]))
-            print(epoch_loss)
+            if verbose:
+                print(epoch_loss)
 
     def train_cdf(self, t_pred, over_pred_vec, n_epochs=10, batch_size=128, verbose=True):
-        iterator = range(n_epochs) if verbose else trange(n_epochs)
-        for epoch in iterator:
+        for epoch in range(n_epochs):
             if verbose:
                 print(f'Epoch {epoch+1}/{n_epochs}', end=' ')
             epoch_loss = 0

@@ -35,6 +35,13 @@ def basis_array(knots, degree, t):
 
 
 class BSpline1D:
+    """Represents a B-spline (continuous piecewise function) which has a knot
+    vector (ascending values along the `t` dimension) and a control point vector
+    (values along the `y` dimension).
+
+    Note that there are multiple constructors and an accompanying Curve class
+    which represents one of the continuous functions that compose the B-spline.
+    """
     def __init__(self, points, knots, degree):
         assert len(points.shape) == 1
         assert len(knots.shape) == 1
@@ -94,30 +101,74 @@ class BSpline1D:
         basis = self.get_basis(t)
         return (basis * self.points.reshape((1, -1))).sum(axis=1)
 
-    # probably everything involved in sampling should get moved to the distribution file and
-    # put into a CDF wrapper class or something
-    def sample(self, size=1):
-        assert self.degree == 3, 'only for CDFs'
-        
-        ys = np.random.rand(size)
-        ts = []
-        for y in ys:
-            curve_ind = self.get_curve_index(y)[0]
-            curve = self.get_curve(curve_ind)
-            solutions = curve.solve(y)
-            if solutions.shape[0] == 1:
-                t = solutions[0]
-            else:
-                t = solutions[np.where((self.knots[curve_ind + self.degree] <= solutions) & (solutions < self.knots[curve_ind + self.degree + 1]))][0]
-            ts.append(t)
-
-        if size == 1:
-            return ts[0]
+    def get_basis(self, t):
+        if isinstance(t, (int, float)):
+            return basis_array(self.knots, self.degree, t)
+        elif isinstance(t, np.ndarray):
+            return self.basis_batched(t)
         else:
-            return np.array(ts)
+            raise TypeError
+
+    def basis_batched(self, t):
+        """Evaluates the B-spline basis function N_{i,k} at t (vectorized version)
+
+        Parameters:
+        ===========
+        knots: 1-D numpy array of knots
+        degree: degree of the spline
+        t: Values of t (1-D numpy array)
+        """
+        # Find the knot index `i`
+        i = np.searchsorted(self.knots, t) - 1
+        rows = np.where((i < self.n - self.degree) | (i >= self.degree))
+
+        # 1 row per value
+        basis = np.zeros((t.shape[0], self.knots.shape[0]))
+        for row in rows:
+            basis[row, i[row]] = 1
+
+        num1 = t.reshape((-1, 1)) - self.knots.reshape((1, -1))
+        num2 = self.knots.reshape((1, -1)) - t.reshape((-1, 1))
+        for r in range(1, self.degree + 1):
+            denom = (self.knots[r:] - self.knots[:-r]).reshape((1, -1))
+            denom = np.where(denom == 0, np.inf, denom).reshape((1, -1))
+            basis[:, :-r-1] = (
+                num1[:, :-r-1] / denom[:, :-1] * basis[:, :-r-1]
+                + num2[:, r+1:] / denom[:, 1:] * basis[:, 1:-r]
+            )
+
+        return basis[:, :self.n]
+
+    def plot(self, segmented=True, ax=None, **kwargs):
+        knots = np.unique(self.knots)
         
+        if segmented:
+            for i in range(knots.shape[0] - 1):
+                ts = np.linspace(knots[i], knots[i+1], 21)
+                ys = self.get_y_batched(ts)
+                if ax is None:
+                    plt.plot(ts, ys)
+                else:
+                    ax.plot(ts, ys)
+        else:
+            ts = [knots[0]]
+            for i in range(knots.shape[0] - 1):
+                ts.extend(np.linspace(knots[i], knots[i+1], 21)[1:])
+            if ax is None:
+                return plt.plot(ts, self.get_y_batched(np.array(ts)), **kwargs)
+            else:
+                return ax.plot(ts, self.get_y_batched(np.array(ts)), **kwargs)
 
     def get_curve_index(self, y):
+        """Get the index (indices) for the curve (curves) that contain the given
+        value of `y` for this spline
+
+        This is an important method for sampling from a BSplineCDF
+
+        There is probably a better name for this and it should have a
+        counterpart that gets a single curve index based on a given value for
+        `t`
+        """
         return np.where((self.end_points[:-1] <= y) & (self.end_points[1:] > y))[0].tolist()
 
     def get_curve(self, ind):
@@ -160,58 +211,8 @@ class BSpline1D:
         )
         return curve
 
-    def get_basis(self, t):
-        if isinstance(t, (int, float)):
-            return basis_array(self.knots, self.degree, t)
-        elif isinstance(t, np.ndarray):
-            return self.basis_batched(t)
-        else:
-            raise TypeError
 
-    def basis_batched(self, t):
-        """Evaluates the B-spline basis function N_{i,k} at t (vectorized version)
-
-        Parameters:
-        ===========
-        knots: 1-D numpy array of knots
-        degree: degree of the spline
-        t: Values of t (1-D numpy array)
-        """
-        # Find the knot index `i`
-        i = np.searchsorted(self.knots, t) - 1
-        rows = np.where((i < self.n - self.degree) | (i >= self.degree))
-
-        # 1 row per value
-        basis = np.zeros((t.shape[0], self.knots.shape[0]))
-        for row in rows:
-            basis[row, i[row]] = 1
-
-        num1 = t.reshape((-1, 1)) - self.knots.reshape((1, -1))
-        num2 = self.knots.reshape((1, -1)) - t.reshape((-1, 1))
-        for r in range(1, self.degree + 1):
-            denom = (self.knots[r:] - self.knots[:-r]).reshape((1, -1))
-            denom = np.where(denom == 0, np.inf, denom).reshape((1, -1))
-            basis[:, :-r-1] = (
-                num1[:, :-r-1] / denom[:, :-1] * basis[:, :-r-1]
-                + num2[:, r+1:] / denom[:, 1:] * basis[:, 1:-r]
-            )
-
-        return basis[:, :self.n]
-
-    def plot(self, segmented=True, **kwargs):
-        knots = np.unique(self.knots)
-        if segmented:
-            for i in range(knots.shape[0] - 1):
-                ts = np.linspace(knots[i], knots[i+1], 21)
-                ys = self.get_y_batched(ts)
-                plt.plot(ts, ys)
-        else:
-            ts = [knots[0]]
-            for i in range(knots.shape[0] - 1):
-                ts.extend(np.linspace(knots[i], knots[i+1], 21)[1:])
-            plt.plot(ts, self.get_y_batched(np.array(ts)), **kwargs)
-
-
+# I think I want to keep the Curve class here so that we can visualize the curves on any B-spline we want, whether or not we got it from the BSplineCDF
 class Curve:
     def __init__(self, *coefficients):
         assert len(coefficients) == 4, 'we only support cubic curves at the moment'
