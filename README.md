@@ -37,15 +37,18 @@ Take a look through the `dev.ipynb` notebook to see how this is used.
 ## TODO
 
 - [x] Separate CDF spline and sampling specifics from BSpline1D class
-- [ ] Enable custom knot placements for SimpleDensityEstimator
+- [x] Enable custom knot placements for SimpleDensityEstimator
 - [ ] Explore relationship between irregular knot placements and area
-    - [ ]  Normalize density curves by area in training loop if needed
-    - [ ]  The FlexibleDensityEstimator definitely needs this
+    - [x] Q: Does the SimpleDensityEstimator need area in the training loop? A: No. It does not help at all.
+    - [x]  ~~Normalize density curves by area in training loop if needed~~
+    - [ ] Q: Does the FlexibleDensityEstimator need area in the training loop? A: Unknown; also, I don't like the FlexibleDensityEstimator that much
 - [ ] Print and return mean loss instead of summed loss to visualize loss per observation (normalize by batch size)
-- [ ] Design a better experiment for the SimpleDensityEstimator where there are no high densities at the extremes
+- [x] Design a better experiment for the SimpleDensityEstimator where there are no high densities at the extremes
 - [ ] Move bezier splines onto v2 branch?
 - [ ] Update README with some of the cool stuff the package can do!
 - [ ] Merge v2 branch with main branch
+- [x] Enable sampling from a density estimation
+    - ![thompson sampling][(https://github.com/landonwork/spline_filter/blob/v2/assets/thompson_sampler_training.gif?raw=true)
 
 ## License
 
