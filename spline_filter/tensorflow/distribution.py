@@ -436,11 +436,11 @@ class FlexibleDensityEstimator:
                         over_pred_vec[i*batch_size:(i+1)*batch_size],
                         tf.reshape(tf.concat([self.point_logits, self.knot_logits], axis=0), [1, -1])
                     )
-                epoch_loss += loss.numpy().mean()
+                epoch_loss += loss.numpy().sum()
                 grads = tape.gradient(loss, [self.point_logits, self.knot_logits])
                 self.optimizer.apply_gradients(zip(grads, [self.point_logits, self.knot_logits]))
             if verbose:
-                print(epoch_loss)
+                print(epoch_loss / t_pred.shape[0])  # normalize loss to per observation
 
     def area(self, t_lo=0.0, t_hi=1.0):
         # assert t_lo >= 0.0 and t_hi <= 1.0

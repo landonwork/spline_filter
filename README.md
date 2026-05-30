@@ -42,7 +42,7 @@ Take a look through the `dev.ipynb` notebook to see how this is used.
     - [x] Q: Does the SimpleDensityEstimator need area in the training loop? A: No. It does not help at all.
     - [x]  ~~Normalize density curves by area in training loop if needed~~
     - [ ] Q: Does the FlexibleDensityEstimator need area in the training loop? A: Unknown; also, I don't like the FlexibleDensityEstimator that much
-- [ ] Print and return mean loss instead of summed loss to visualize loss per observation (normalize by batch size)
+- [x] Print and return mean loss instead of summed loss to visualize loss per observation (normalize by batch size)
 - [x] Design a better experiment for the SimpleDensityEstimator where there are no high densities at the extremes
 - [ ] Move bezier splines onto v2 branch?
 - [ ] Update README with some of the cool stuff the package can do!

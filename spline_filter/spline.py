@@ -139,6 +139,7 @@ class BSpline1D:
 
         return basis[:, :self.n]
 
+    # if you change this function, don't forget to change plot_sf in cdf.py
     def plot(self, segmented=True, ax=None, **kwargs):
         knots = np.unique(self.knots)
         
@@ -251,9 +252,11 @@ class Curve:
             # one unique solution
             ans = np.cbrt(-q/2 + np.sqrt(discriminant)) + np.cbrt(-q/2 - np.sqrt(discriminant)) - b / (3 * a)
             return np.array([ans])
-        elif discriminant == 0.0:  # TODO
+        elif discriminant == 0.0:  # Source: https://math.stackexchange.com/questions/2020735/closed-form-of-multiple-roots-for-zero-discriminant-cubic
             # two unique solutions
-            assert False, 'I will implement this later'
+            single_root = (4*a*b*c - 9*a*a*d - b*b*b) / (a * (b*b - 3*a*c))
+            double_root = (9 * a * d - b * c) / (2 * b * b - 6 * a * c)
+            return np.array([single_root, double_root])
         else:
             # three unique solutions
             # get the real and imaginary parts of the first cube root (which will be a complex number)

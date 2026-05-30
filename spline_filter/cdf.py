@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 from .spline import BSpline1D
 
@@ -63,3 +64,24 @@ class BSplineCDF(BSpline1D):
             return ts[0]
         else:
             return np.array(ts)
+
+    def plot_sf(self, segmented=True, ax=None, **kwargs):
+        knots = np.unique(self.knots)
+        
+        if segmented:
+            for i in range(knots.shape[0] - 1):
+                ts = np.linspace(knots[i], knots[i+1], 21)
+                ys = 1 - self.get_y_batched(ts)
+                if ax is None:
+                    plt.plot(ts, ys)
+                else:
+                    ax.plot(ts, ys)
+        else:
+            ts = [knots[0]]
+            for i in range(knots.shape[0] - 1):
+                ts.extend(np.linspace(knots[i], knots[i+1], 21)[1:])
+            ys = 1 - self.get_y_batched(np.array(ts))
+            if ax is None:
+                return plt.plot(ts, ys, **kwargs)
+            else:
+                return ax.plot(ts, ys, **kwargs)
