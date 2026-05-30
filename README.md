@@ -48,7 +48,7 @@ Take a look through the `dev.ipynb` notebook to see how this is used.
 - [ ] Update README with some of the cool stuff the package can do!
 - [ ] Merge v2 branch with main branch
 - [x] Enable sampling from a density estimation
-    - ![thompson sampling][(https://github.com/landonwork/spline_filter/blob/v2/assets/thompson_sampler_training.gif?raw=true)
+    - ![thompson sampling](https://github.com/landonwork/spline_filter/blob/v2/assets/thompson_sampler_training.gif?raw=true)
 
 ## License
 
